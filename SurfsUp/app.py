@@ -31,6 +31,8 @@ Base.prepare(autoload_with=engine)
 Measurement = Base.classes.measurement
 Station = Base.classes.station
 
+
+
 #################################################
 # Additional functions
 #################################################
@@ -228,4 +230,4 @@ def temperature_date_range(start, end):
     
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=8000, debug=True)

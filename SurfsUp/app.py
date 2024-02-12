@@ -18,11 +18,9 @@ from flask import Flask, jsonify
 
 # Create engine using the `hawaii.sqlite` database file
 db_path = Path.cwd() / Path('./Resources/hawaii.sqlite')
-
 engine = create_engine(f"sqlite:///{db_path}")
 
 # Declare a Base using `automap_base()`
-
 Base = automap_base()
 
 # Use the Base class to reflect the database tables
@@ -37,6 +35,16 @@ Station = Base.classes.station
 # Additional functions
 #################################################
 def temperature_obs(input_np_array):
+    """
+    Returns the minimuum, maximum and average temperature of a given input 
+    numpy array of temperatures.
+
+    Args:
+        input_np_array (numpy.array): Numeric 1D numpy array of observed temperatures
+
+    Returns:
+        list: 3 element list which returns [minimum, maximum, average] temperature
+    """
 
     min_temp = input_np_array.min()
     max_temp = input_np_array.max()
@@ -57,10 +65,12 @@ app = Flask(__name__)
 #################################################
 @app.route('/')
 def welcome():
-    """List all possible api routes
+    """
+    The root page that Lists all possible api routes
     """
     return (
         f"Available Routes:<br/>"
+        "<br/>"
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
         f"/api/v1.0/tobs<br/>"
@@ -71,7 +81,7 @@ def welcome():
 @app.route('/api/v1.0/precipitation')
 def precipitation():
     """
-    Generates precipitation data for the last year of data recordings in dictionary format with
+    Provides precipitation data for the last year of data recordings in dictionary format with
     the key as the date and precipitation as the values.
     """
     # Create our session (link) from Python to the DB
@@ -92,11 +102,8 @@ def precipitation():
 
 @app.route('/api/v1.0/stations')
 def stations():
-    """sumary_line
-    
-    Keyword arguments:
-    argument -- description
-    Return: return_description
+    """
+    Provides station id data
     """
     
     # Create our session (link) from Python to the DB
@@ -114,9 +121,12 @@ def stations():
 
 @app.route('/api/v1.0/tobs')
 def tobs():
+    """Provides the temperature data for the last year of the station with the most number of observations
+    """
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
+    # calculate the maximum date in the dataset
     max_date = session.query(func.max(Measurement.date)).scalar()
 
     # extract the year, month and day from max_date as integers
@@ -145,26 +155,39 @@ def tobs():
                 .filter(Measurement.station == active_station)\
                 .all()
 
+    # close the session
     session.close()
 
+    # flatten the results
     temp_list = list(np.ravel(results))
 
     return jsonify(temp_list)
 
 @app.route('/api/v1.0/<start>')
 def temperature_start_range(start):
+    """
+    Returns the te observed temperatures statistics i.e. minimum temperature, maximum temperature and average temperature
+    for a specified <start> date to the end of the dataset date range.
+
+    Args:
+        start (string): date string in the form "YYYY-MM-DD"
+
+    Returns:
+        JSON list: [minimum temp, maximum temp, average temp]
+    """
     # Create our session (link) from Python to the DB
-
-
     session = Session(engine)
 
-
+    # query result that selects all temperature data after a given start date
     results = session.query(Measurement.tobs).filter(Measurement.date >= start).all()
 
+    # close the session
     session.close()
 
+    # flatten the results
     results = np.ravel(results)
 
+    # calculate the temperature stats [minimum temp, maximum temp, average temp]
     temperature_stats = temperature_obs(results)
 
     return jsonify(temperature_stats)
@@ -172,17 +195,32 @@ def temperature_start_range(start):
 
 @app.route('/api/v1.0/<start>/<end>')
 def temperature_date_range(start, end):
-    # Create our session (link) from Python to the DB
+    """
+    Returns the te observed temperatures statistics i.e. minimum temperature, maximum temperature and average temperature
+    for a specified <start> and <end> date range.
 
+    Args:
+        start (string): start date string in the form "YYYY-MM-DD"
+        end (string): end date string in the form "YYYY-MM-DD"
+
+
+    Returns:
+        JSON list: [minimum temp, maximum temp, average temp]
+    """
+    # Create our session (link) from Python to the DB
     session = Session(engine)
 
+    # query result that selects all temperature data after a given start and end date
     results = session.query(Measurement.tobs).filter(Measurement.date >= start).\
                 filter(Measurement.date <= end).all()
 
+     # close the session
     session.close()
 
+    # flatten the results
     results = np.ravel(results)
 
+    # calculate the temperature stats [minimum temp, maximum temp, average temp]
     temperature_stats = temperature_obs(results)
 
     return jsonify(temperature_stats)

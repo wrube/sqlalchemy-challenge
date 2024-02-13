@@ -36,6 +36,25 @@ Station = Base.classes.station
 #################################################
 # Additional functions
 #################################################
+
+def start_date(date, weeks_ago=52):
+    """Calculates the start date given a date of interest and how many weeks prior you are interested in
+
+    Args:
+        date (string): Date of interest in string format "YYYY-MM-DD". 
+        weeks_ago (int, optional): Number of weeks prior. Defaults to 52.
+
+    Returns:
+        datetime.date: The date X weeks_ago from input date.
+    """
+    # extract the year, month and day from max_date as integers
+    max_year, max_month, max_day = [int(i) for i in date.split('-')]
+
+    # calculate the minimum date for query
+    min_date = dt.date(max_year, max_month, max_day) - dt.timedelta(weeks=weeks_ago)
+    return min_date
+
+
 def temperature_obs(input_np_array):
     """
     Returns the minimuum, maximum and average temperature of a given input 
@@ -89,9 +108,17 @@ def precipitation():
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
-    
+
+    # calculate the maximum date in the dataset
+    max_date = session.query(func.max(Measurement.date)).scalar()
+
+    # calculate the minimum date for query
+    min_date = start_date(date=max_date, weeks_ago=52)
+
     # Query all passengers
-    results = session.query(Measurement.date, Measurement.prcp).all()
+    results = session.query(Measurement.date, Measurement.prcp)\
+            .filter(Measurement.date >= min_date)\
+            .all()
 
     session.close()
 
@@ -131,25 +158,16 @@ def tobs():
     # calculate the maximum date in the dataset
     max_date = session.query(func.max(Measurement.date)).scalar()
 
-    # extract the year, month and day from max_date as integers
-    max_year, max_month, max_day = [int(i) for i in max_date.split('-')]
-
     # calculate the minimum date for query
-    min_date = dt.date(max_year, max_month, max_day) - dt.timedelta(weeks=52)
+    min_date = start_date(date=max_date, weeks_ago=52)
 
-    # Query to find the most active station in 
-
-    # active_station = session.query(Measurement.station, func.count(Measurement.station).label('count'))\
-    #                     .filter(Measurement.date >= min_date)\
-    #                     .group_by(Measurement.station)\
-    #                     .order_by(func.count(Measurement.station).desc())\
-    #                     .first()
     
     # query to determine the most active station
     active_station = session.query(Measurement.station, func.count(Measurement.station).label('count'))\
                         .group_by(Measurement.station)\
                         .order_by(func.count(Measurement.station).desc())\
                         .first()[0]
+
 
     # query precipitation data for the last year of data collection
     results = session.query(Measurement.prcp)\
